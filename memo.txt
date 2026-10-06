@@ -1,0 +1,3 @@
+PC2 start server
+python server.py --config adaptive_runtime_config.yaml
+

@@ -1,0 +1,52 @@
+server:
+  host: 0.0.0.0
+  port: 8765
+
+device: auto
+
+storage:
+  # Persistent archive for the current test/session (external SSD).
+  session_root: F:/261006_adaptive_control_data_test
+  # Stable PC2-internal temporary transfer area. Only transfer_root/inbox is SMB-shared.
+  transfer_root: C:/Users/3-019A_ShockExp7/Documents/azuma/99_adaptive_control_transfer
+
+resources:
+  action_set_id: action27_v1
+  target_set_id: target_set_v1
+
+paths:
+  ml_repo: ../laser_processing_ml
+
+models:
+  metadata_only:
+    state_estimator_run: F:/260910_ml_outputs/20260926_232041_g1_matched_metadata_only
+    transition_run: F:/260910_ml_outputs/20260928_135723_transition_a_no_zshock
+  action_history_only:
+    state_estimator_run: F:/260910_ml_outputs/20260928_001855_g1_matched_action_history_only
+    transition_run: F:/260910_ml_outputs/20260928_135723_transition_a_no_zshock
+  shock_metadata:
+    state_estimator_run: F:/260910_ml_outputs/20260927_234100_g5_shock_metadata
+    transition_run: F:/260910_ml_outputs/20260928_152536_transition_b_from_g5_shock_metadata
+  shock_action_history:
+    state_estimator_run: F:/260910_ml_outputs/20260928_010313_g5_shock_action_history
+    transition_run: F:/260910_ml_outputs/20260928_160640_transition_b_from_g5_shock_action_history
+
+action_selection:
+  l1_weight: 1.0
+  dice_weight: 1.0
+  candidate_threshold: 0.5
+  no_safe_action_policy: min_over_then_cost
+
+stop_policy:
+  overall_removal_target: 0.95
+  over_removal_limit: 0.05
+  max_control_steps: 20
+
+orca_online:
+  expected_frames: 15
+  detection_downsample: 4
+  session_default_start_frame_1based: 4
+  confidence_threshold: 0.05
+  contrast_threshold: 0.0
+  execution_to_image_y_sign: 1.0
+  execution_to_image_z_sign: -1.0
