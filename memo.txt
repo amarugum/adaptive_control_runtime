@@ -1,3 +1,8 @@
 PC2 start server
 python server.py --config adaptive_runtime_config.yaml
 
+On Administrator PowerShell
+PC2 "イーサネット" restart
+Disable-NetAdapter -Name "イーサネット 2" -Confirm:$false
+Start-Sleep -Seconds 3
+Enable-NetAdapter -Name "イーサネット 2" -Confirm:$false

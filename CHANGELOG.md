@@ -36,3 +36,11 @@
 
 ## V1.0
 - Initial PC2 adaptive-control runtime: HTTP request/ACK, four ML modes, ORCA online path, candidate sweep, target scoring, stop/action-selection policy, and artifact saving.
+
+## V1.7 - Target selection and offline control validation tools
+- Added `build_target_candidates_from_dataset.py` to extract diverse, actually observed cumulative processed masks from the existing ML dataset as 256x256 binary target candidates.
+- Added `screen_target_candidates.py` to re-score saved 27-action Transition predictions against multiple candidate targets without rerunning acquisition or irradiation. It reports safe-action count, no-safe fraction, selected-action cost, predicted target coverage/over-removal, action diversity, extreme-energy selection, and optional nearest-observed IoU.
+- Added `register_target_candidate.py` to validate and register one approved non-smoke target without overwriting an existing target.
+- Added `validate_stop_policy_offline.py` to exercise the exact runtime STOP priority: over-removal, target-reached, then max-control-steps.
+- No production inference or decision logic changed.
+- Existing PC2 unit suite: 13 passed; stop-policy branch validation: 4/4 passed.
