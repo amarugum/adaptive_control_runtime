@@ -1,0 +1,20 @@
+{
+  "action_history_only": {
+    "estimator_inference_amp": false,
+    "candidate_chunk_size": 18,
+    "transition_inference_amp": true,
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260928_001855_g1_matched_action_history_only",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_135723_transition_a_no_zshock",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended chunk."
+  },
+  "shock_metadata": {
+    "estimator_inference_amp": false,
+    "candidate_chunk_size": 9,
+    "transition_inference_amp": true,
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260927_234100_g5_shock_metadata",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_152536_transition_b_from_g5_shock_metadata",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended chunk."
+  }
+}

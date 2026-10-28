@@ -1,5 +1,10 @@
 # adaptive_control_runtime (PC2)
 
+## Policy v1.0 live (2026-10-13)
+
+**Live policy is now `L=3 max(ΔO,0)-max(ΔC,0)`**, with estimator STOP `O>=0.10` before `C>=0.90`; candidate STOP if no feasible `O_next<0.10` or best feasible `L>=0`. No epsilon or spatial divisions. The older V1.x historical notes below describe previous versions and are superseded for live action decisions. Details, PC1 compatibility and deployment: [POLICY_V1_20261013.md](POLICY_V1_20261013.md).
+
+
 Place this directory next to `laser_processing_postprocessing` and `laser_processing_ml` under `1_prog/`.
 
 ## V1.6 storage model
@@ -144,3 +149,59 @@ This creates/registers `T_SMOKE_ALL` for integration testing only. Restart `serv
 ## Version history
 
 See `CHANGELOG.md`.
+
+## V1.8 GPU inference and no-safe STOP (historical gate)
+
+V1.8 originally benchmarked the two primary comparison modes:
+
+- `action_history_only`: State Estimator FP32, candidate chunk 12; Transition AMP is benchmark-recommended but remains disabled until equivalence validation passes.
+- `shock_metadata`: State Estimator FP32, candidate chunk 27; Transition AMP is benchmark-recommended but remains disabled until equivalence validation passes.
+
+V1.10 supersedes this partial configuration: all four scientific modes now have explicit FP32 `performance:` blocks, and the remaining two chunk sizes are determined by the four-model benchmark.
+
+Before enabling Transition AMP for real processing, run:
+
+```powershell
+python validation\validate_amp_action_equivalence.py --runtime-config adaptive_runtime_config.yaml
+```
+
+V1.8 also changes the live no-safe behavior. If no candidate satisfies the over-removal limit, PC2 returns STOP with `stop_reason=no_safe_action`; it never exposes the diagnostic fallback candidate as an executable `best_action`.
+
+## V1.10 four-model pre-experiment validation
+
+The runtime has four scientific modes. V1.10 benchmarks and replays all four rather than only the two primary comparison modes.
+
+First run the four-model FP32 GPU benchmark:
+
+`python benchmarks\benchmark_gpu.py --runtime-config adaptive_runtime_config.yaml`
+
+Apply the generated chunk recommendations with `benchmarks\apply_fp32_recommendations.py`; AMP remains false for every mode. Then run:
+
+`python validation\replay_end_to_end_offline.py --runtime-config adaptive_runtime_config.yaml --max-states-per-pulse 5`
+
+and finally the full replay without `--max-states-per-pulse`. See `validation/END_TO_END_REPLAY.md`.
+
+
+## V1.12 policy sensitivity analysis
+
+After the full four-model end-to-end replay, evaluate the hard STOP policy separately from the continuous morphology metrics:
+
+`python validation\policy_sensitivity_analysis.py --runtime-config adaptive_runtime_config.yaml --max-states-per-pulse 5`
+
+If the smoke run completes, run the full analysis without `--max-states-per-pulse`. The first run performs one GPU pass and writes `policy_candidate_cache.npz`; all threshold combinations are then evaluated CPU-side from that fixed cache.
+
+Default sweep:
+- `overall_removal_target`: 0.70, 0.75, 0.80, 0.85, 0.90, 0.95
+- `over_removal_limit`: 0.03, 0.05, 0.075, 0.10, 0.15, 0.20
+
+The script intentionally does not select a threshold automatically. Review false-CONTINUE, oracle-unsafe selected-action rate, premature STOP behavior, and target-specific results before freezing the live policy. See `validation/POLICY_SENSITIVITY.md`.
+
+## Proposed continuation-value validation (offline only)
+
+`validation/continuation_value_sensitivity.py` can reuse the `policy_candidate_cache.npz` inside `policy_sensitivity_*.zip` to compare STOP/CONTINUE based on `U(a)=Delta C(a)-lambda*Delta O(a)` and threshold epsilon. This script is diagnostic, does not update the running controller, and is documented in `validation/CONTINUATION_VALUE_SENSITIVITY.md`.
+
+
+### New offline diagnostics (2026-10-13)
+- `validation/combined_stop_policy_validation.py`: exploratory λ + completion + over STOP sensitivity on validation candidate cache.
+- `validation/preview_target_completion_overlays.py`: original-coordinate measured mask overlays for 8 target review.
+- These do not update the live decision engine or local configuration. See individual validation MD files.

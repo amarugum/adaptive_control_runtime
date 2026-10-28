@@ -1,0 +1,60 @@
+# Offline target reachability / controllability evaluation
+#
+# Place this file under:
+# adaptive_control_runtime/offline_evaluation/configs/
+#
+# Paths that are not absolute are resolved relative to this YAML file.
+
+# Current PC2 runtime config. The script reuses its model paths, action registry,
+# action-selection weights, candidate threshold, and over-removal safety limit.
+runtime_config: ../../adaptive_runtime_config.yaml
+
+# Keep offline results in the existing TEST session root for now.
+output_root: F:/261006_adaptive_control_data_test/offline_evaluation
+
+targets:
+  # 384x384 geometric ideal targets created by Ideal Target Designer.
+  root: F:/261006_adaptive_control_data_test/target_selection/ideal_targets
+  pattern: "T_*/desired_target_mask.npy"
+  output_size: 256
+
+# The two control pipelines intended for the experiment.
+# Only the Transition component is used in this first feasibility evaluation:
+# observed true current state -> 27 candidate next states.
+models:
+  - name: parameter_transition_A
+    runtime_mode: action_history_only
+  - name: shock_transition_B
+    runtime_mode: shock_metadata
+
+states:
+  # Use held-out physical states, not train states, for target screening.
+  split: test
+
+  # Transition was trained from p5->p10 through p45->p50.
+  current_pulses: [5, 10, 15, 20, 25, 30, 35, 40, 45]
+
+  # null = use all common states at each pulse.
+  # For a quick first smoke run, set 10 or 20.
+  max_states_per_pulse: null
+  seed: 42
+
+evaluation:
+  device: auto
+  batch_size: 8
+  candidate_chunk_size: 6
+  amp: true
+
+empirical_support:
+  enabled: true
+
+  # The ideal targets were designed from final p50 morphologies, so p50 is the
+  # most interpretable support set for the first pass.
+  pulses: [50]
+  top_k: 10
+  iou_thresholds: [0.5, 0.7, 0.8]
+
+  # Optional artifact exclusion CSV from the shape-clustering cleanup.
+  # Leave null if the cleaned list is not available at this path.
+  exclude_csv: null
+  exclude_hole_column: hole_uid

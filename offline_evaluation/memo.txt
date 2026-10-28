@@ -1,0 +1,6 @@
+Evaluate target reachability
+python offline_evaluation\evaluate_target_reachability.py --config offline_evaluation\configs\target_reachability.yaml --validate-only
+python offline_evaluation\evaluate_target_reachability.py --config offline_evaluation\configs\target_reachability.yaml
+
+Replay end to end offline validation
+python validation\replay_end_to_end_offline.py --runtime-config adaptive_runtime_config.yaml

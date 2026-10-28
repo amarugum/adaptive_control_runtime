@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path, PureWindowsPath
 import re
+import math
 import yaml
 
 
@@ -93,6 +94,65 @@ def load_runtime_config(path: Path) -> dict:
         for key in ("state_estimator_run", "transition_run"):
             if key in model_cfg and model_cfg[key]:
                 model_cfg[key] = str(_resolve_user_path(model_cfg[key], base_dir))
+
+
+    # Safety-critical action-selection policy. V1.8 fails closed when no safe
+    # candidate exists; legacy min-over-removal fallback is no longer allowed
+    # for the live runtime.
+    action_selection = cfg.get("action_selection") or {}
+    no_safe_policy = str(action_selection.get("no_safe_action_policy", "stop")).strip().lower()
+    if no_safe_policy != "stop":
+        raise ValueError(
+            "action_selection.no_safe_action_policy must be 'stop' in V1.8; "
+            f"got {no_safe_policy!r}"
+        )
+    action_selection["no_safe_action_policy"] = "stop"
+    # Policy v1.0: a deliberate and explicit switch away from L1+Dice.
+    # Old YAML files with the legacy scoring parameters must not silently run.
+    scoring_method = action_selection.get("scoring_method")
+    if scoring_method is None and ("l1_weight" in action_selection or "dice_weight" in action_selection):
+        raise ValueError("Legacy L1+Dice config: set action_selection.scoring_method=delta_area_v1 and lambda_over=3.0")
+    if scoring_method is not None and scoring_method != "delta_area_v1":
+        raise ValueError("action_selection.scoring_method must be 'delta_area_v1'")
+    action_selection["scoring_method"] = "delta_area_v1"
+    lambda_over = float(action_selection.get("lambda_over", 3.0))
+    if not math.isfinite(lambda_over) or lambda_over <= 0:
+        raise ValueError("action_selection.lambda_over must be finite and > 0")
+    action_selection["lambda_over"] = lambda_over
+    threshold = float(action_selection.get("candidate_threshold", 0.5))
+    if not math.isfinite(threshold) or not 0 < threshold <= 1:
+        raise ValueError("action_selection.candidate_threshold must be in (0, 1]")
+    action_selection["candidate_threshold"] = threshold
+    cfg["action_selection"] = action_selection
+
+    stop_policy = cfg.get("stop_policy") or {}
+    for key, default in (("overall_removal_target", 0.90), ("over_removal_limit", 0.10)):
+        value = float(stop_policy.get(key, default))
+        if not math.isfinite(value) or value <= 0 or (key == "overall_removal_target" and value > 1):
+            raise ValueError(f"stop_policy.{key} must be a positive finite value (completion <= 1)")
+        stop_policy[key] = value
+    max_steps = int(stop_policy.get("max_control_steps", 20))
+    if max_steps < 1:
+        raise ValueError("stop_policy.max_control_steps must be >= 1")
+    stop_policy["max_control_steps"] = max_steps
+    cfg["stop_policy"] = stop_policy
+
+    # Validate optional per-mode GPU inference settings.  Missing values retain
+    # conservative backward-compatible defaults inside MLRuntime.
+    for mode_name, model_cfg in models.items():
+        if not isinstance(model_cfg, dict):
+            continue
+        perf = model_cfg.get("performance") or {}
+        if perf:
+            chunk = int(perf.get("candidate_chunk_size", 9))
+            if chunk < 1:
+                raise ValueError(
+                    f"models.{mode_name}.performance.candidate_chunk_size must be >= 1"
+                )
+            perf["candidate_chunk_size"] = chunk
+            perf["estimator_amp"] = bool(perf.get("estimator_amp", False))
+            perf["transition_amp"] = bool(perf.get("transition_amp", False))
+            model_cfg["performance"] = perf
 
     cfg["storage"] = {
         **storage,

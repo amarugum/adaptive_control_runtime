@@ -347,7 +347,7 @@ def main() -> int:
             print(
                 f"best action    : {best.get('action_id')} E={best.get('energy_uJ')} "
                 f"y={best.get('action_y_um')} z={best.get('action_z_um')} "
-                f"J={best.get('predicted_cost'):.6f}"
+                f"L={best.get('predicted_policy_loss', best.get('predicted_cost')):.6f}"
             )
         print(f"response time  : {elapsed:.3f} s")
         print(f"idempotent     : {idempotent}")

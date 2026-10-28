@@ -1,0 +1,98 @@
+{
+  "metadata_only": {
+    "estimator_inference_amp": false,
+    "transition_inference_amp": false,
+    "candidate_chunk_size": 6,
+    "estimator_median_ms": 2.492560029029846,
+    "transition_27_action_median_ms": 68.54098892211914,
+    "estimated_ml_pipeline_median_ms": 71.03354895114899,
+    "estimator_amp_consistency": {},
+    "transition_recommendation_detail": {
+      "transition_inference_amp": false,
+      "candidate_chunk_size": 6,
+      "median_ms": 68.54098892211914,
+      "p95_ms": 69.66198387145997,
+      "peak_reserved_gb": 0.59375,
+      "fastest_raw_amp": false,
+      "fastest_raw_chunk_size": 6,
+      "fastest_raw_median_ms": 68.54098892211914,
+      "selection_rule": "fastest safe setting; prefer FP32 when its median latency is within 3% of the raw fastest setting"
+    },
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260926_232041_g1_matched_metadata_only",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_135723_transition_a_no_zshock",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended FP32 setting."
+  },
+  "action_history_only": {
+    "estimator_inference_amp": false,
+    "transition_inference_amp": false,
+    "candidate_chunk_size": 6,
+    "estimator_median_ms": 2.827023983001709,
+    "transition_27_action_median_ms": 68.68438339233398,
+    "estimated_ml_pipeline_median_ms": 71.5114073753357,
+    "estimator_amp_consistency": {},
+    "transition_recommendation_detail": {
+      "transition_inference_amp": false,
+      "candidate_chunk_size": 6,
+      "median_ms": 68.68438339233398,
+      "p95_ms": 69.51204872131348,
+      "peak_reserved_gb": 0.666015625,
+      "fastest_raw_amp": false,
+      "fastest_raw_chunk_size": 6,
+      "fastest_raw_median_ms": 68.68438339233398,
+      "selection_rule": "fastest safe setting; prefer FP32 when its median latency is within 3% of the raw fastest setting"
+    },
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260928_001855_g1_matched_action_history_only",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_135723_transition_a_no_zshock",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended FP32 setting."
+  },
+  "shock_metadata": {
+    "estimator_inference_amp": false,
+    "transition_inference_amp": false,
+    "candidate_chunk_size": 6,
+    "estimator_median_ms": 6.304847955703735,
+    "transition_27_action_median_ms": 69.26036834716797,
+    "estimated_ml_pipeline_median_ms": 75.5652163028717,
+    "estimator_amp_consistency": {},
+    "transition_recommendation_detail": {
+      "transition_inference_amp": false,
+      "candidate_chunk_size": 6,
+      "median_ms": 69.26036834716797,
+      "p95_ms": 69.84743537902833,
+      "peak_reserved_gb": 0.5703125,
+      "fastest_raw_amp": false,
+      "fastest_raw_chunk_size": 6,
+      "fastest_raw_median_ms": 69.26036834716797,
+      "selection_rule": "fastest safe setting; prefer FP32 when its median latency is within 3% of the raw fastest setting"
+    },
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260927_234100_g5_shock_metadata",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_152536_transition_b_from_g5_shock_metadata",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended FP32 setting."
+  },
+  "shock_action_history": {
+    "estimator_inference_amp": false,
+    "transition_inference_amp": false,
+    "candidate_chunk_size": 6,
+    "estimator_median_ms": 6.560143947601318,
+    "transition_27_action_median_ms": 69.19221115112305,
+    "estimated_ml_pipeline_median_ms": 75.75235509872437,
+    "estimator_amp_consistency": {},
+    "transition_recommendation_detail": {
+      "transition_inference_amp": false,
+      "candidate_chunk_size": 6,
+      "median_ms": 69.19221115112305,
+      "p95_ms": 69.87051544189453,
+      "peak_reserved_gb": 0.576171875,
+      "fastest_raw_amp": false,
+      "fastest_raw_chunk_size": 6,
+      "fastest_raw_median_ms": 69.19221115112305,
+      "selection_rule": "fastest safe setting; prefer FP32 when its median latency is within 3% of the raw fastest setting"
+    },
+    "memory_margin_gb": 0.75,
+    "estimator_run": "F:\\260910_ml_outputs\\20260928_010313_g5_shock_action_history",
+    "transition_run": "F:\\260910_ml_outputs\\20260928_160640_transition_b_from_g5_shock_action_history",
+    "manual_check_required": "Confirm Windows Task Manager Shared GPU Memory stays near zero while repeatedly using the recommended FP32 setting."
+  }
+}

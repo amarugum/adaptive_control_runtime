@@ -6,14 +6,16 @@ import numpy as np
 import torch
 from .action_registry import ActionRegistry
 from .target_store import TargetStore
-from .selector import fractions, candidate_table
+from .selector import fractions, candidate_table_policy_v1
 from .online_orca import OnlineOrcaProcessor
 from .ml_runtime import MLRuntime
 from .storage import ensure_experiment_snapshot, resolve_inbox_transfer_dir
+from .decision_policy import apply_live_candidate_decision
 
 @dataclass(frozen=True)
 class CandidateAction:
     action_id:str; energy_uJ:float; action_y_um:float; action_z_um:float; next_pulse:int
+
 
 class AdaptiveEngine:
     def __init__(self,cfg:dict):
@@ -50,13 +52,16 @@ class AdaptiveEngine:
         shock=None; fs=None; pp_ms=0.0
         if mode in {'shock_metadata','shock_action_history'}:
             t=time.perf_counter(); cal_dir=self.calibration_root/request['calibration']['session_calibration_id']; proc=OnlineOrcaProcessor(cal_dir,self.cfg['orca_online']); transfer_dir=resolve_inbox_transfer_dir(self.inbox_root,request['acquisition']['orca']['transfer_rel_dir']); fs=proc.process(transfer_dir/'ORCA',request,out_dir/'online_orca'); shock=fs.shock_sequence; np.save(out_dir/'shock_sequence.npy',shock.astype(np.float32),allow_pickle=False); pp_ms=(time.perf_counter()-t)*1000
-        t=time.perf_counter(); prob,z=rt.infer_state(request,shock); se_ms=(time.perf_counter()-t)*1000; prob_np=prob.cpu().numpy()[0,0]; threshold=float(self.cfg['action_selection']['candidate_threshold']); binary=prob_np>=threshold
+        t=time.perf_counter(); prob,z=rt.infer_state(request,shock); se_ms=(time.perf_counter()-t)*1000; prob_np=prob.cpu().numpy()[0,0]; threshold=float(self.cfg['action_selection']['candidate_threshold']);
+        if not np.all(np.isfinite(prob_np)): raise ValueError('NONFINITE_STATE_PROBABILITY')
+        if prob_np.shape!=target.shape: raise ValueError('STATE_TARGET_SHAPE_MISMATCH')
+        binary=prob_np>=threshold
         np.save(out_dir/'state_probability.npy',prob_np.astype(np.float16),allow_pickle=False); np.save(out_dir/'state_binary.npy',binary.astype(np.uint8),allow_pickle=False)
         state_eval=fractions(binary,target); sp=self.cfg['stop_policy']; stop=None
         if state_eval['over_removal_fraction']>=float(sp['over_removal_limit']): stop='over_removal'
         elif state_eval['overall_removal_fraction']>=float(sp['overall_removal_target']): stop='target_reached'
-        elif k>=int(request['control']['max_control_steps']): stop='max_control_steps'
-        base={'protocol_version':'1.0','request_id':rid,'status':'ok','source':{'experiment_id':request['experiment']['experiment_id'],'hole_uid':request['experiment']['hole_uid'],'completed_control_step':k,'next_control_step':k+1},'target':{'target_id':request['target']['target_id'],'target_sha256':target_hash},'state_evaluation':state_eval,'model':{'mode':mode,'state_estimator_checkpoint':str(rt.state_ckpt),'transition_checkpoint':str(rt.transition_ckpt),'inference_domain':'trained_range' if k<=10 else 'extrapolation'}}
+        elif k>=min(int(request['control']['max_control_steps']),int(sp['max_control_steps'])): stop='max_control_steps'
+        base={'protocol_version':'1.0','request_id':rid,'status':'ok','source':{'experiment_id':request['experiment']['experiment_id'],'hole_uid':request['experiment']['hole_uid'],'completed_control_step':k,'next_control_step':k+1},'target':{'target_id':request['target']['target_id'],'target_sha256':target_hash},'state_evaluation':state_eval,'policy':{'version':'v1.0','scoring_method':'delta_area_v1','lambda_over':float(self.cfg['action_selection']['lambda_over']),'overall_removal_target':float(sp['overall_removal_target']),'over_removal_limit':float(sp['over_removal_limit']),'epsilon':None},'model':{'mode':mode,'state_estimator_checkpoint':str(rt.state_ckpt),'transition_checkpoint':str(rt.transition_ckpt),'inference_domain':'trained_range' if k<=10 else 'extrapolation','performance':rt.performance_settings()}}
         if fs is not None: base['frame_selection']={'auto_start_frame':fs.auto_start_frame_1based,'used_start_frame':fs.used_start_frame_1based,'selection_source':fs.selection_source,'confidence':fs.confidence,'contrast_score':fs.contrast_score,'low_confidence':fs.low_confidence,'low_contrast':fs.low_contrast}
         else: base['frame_selection']=None
         if stop:
@@ -64,11 +69,10 @@ class AdaptiveEngine:
         actions=[CandidateAction(a.action_id,a.energy_uJ,a.action_y_um,a.action_z_um,next_pulse) for a in self.registry.actions]
         current=torch.from_numpy(binary.astype(np.float32))[None,None]
         t=time.perf_counter(); preds=rt.predict_candidates(current,z,actions); tr_ms=(time.perf_counter()-t)*1000
-        t=time.perf_counter(); rows,best,safe_count,no_safe=candidate_table(preds,target,self.registry.actions,threshold,float(self.cfg['action_selection']['l1_weight']),float(self.cfg['action_selection']['dice_weight']),float(sp['over_removal_limit'])); score_ms=(time.perf_counter()-t)*1000
+        t=time.perf_counter(); rows,best,safe_count,no_safe=candidate_table_policy_v1(preds,target,self.registry.actions,threshold,state_eval,float(self.cfg['action_selection']['lambda_over']),float(sp['over_removal_limit'])); score_ms=(time.perf_counter()-t)*1000
         np.save(out_dir/'candidate_probabilities.npy',preds.astype(np.float16),allow_pickle=False); np.save(out_dir/'candidate_binary.npy',(preds>=threshold).astype(np.uint8),allow_pickle=False)
         fields=list(rows[0]);
         with (out_dir/'candidate_scores.csv').open('w',encoding='utf-8-sig',newline='') as f: w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
-        base['decision']='continue'; base['stop_reason']=None; base['candidate_evaluation']={'safe_candidate_count':safe_count,'no_safe_action':no_safe,'selected_from_safe_set':not no_safe,'fallback_policy':'min_over_then_cost' if no_safe else None}
-        base['best_action']={'action_id':best['action_id'],'energy_uJ':best['energy_uJ'],'action_y_um':best['action_y_um'],'action_z_um':best['action_z_um'],'predicted_cost':best['cost_j'],'predicted_overall_removal_fraction':best['predicted_overall_removal_fraction'],'predicted_over_removal_fraction':best['predicted_over_removal_fraction']}
         base['artifacts']={'candidate_probabilities':str(out_dir/'candidate_probabilities.npy'),'candidate_binary':str(out_dir/'candidate_binary.npy'),'candidate_scores':str(out_dir/'candidate_scores.csv'),'decision':str(out_dir/'decision.json')}
+        base=apply_live_candidate_decision(base,best,safe_count,no_safe)
         base['timing_ms']={'postprocessing':pp_ms,'state_estimator':se_ms,'transition':tr_ms,'scoring':score_ms,'total':(time.perf_counter()-t0)*1000}; self._write_json(out_dir/'decision.json',base); self._write_json(out_dir/'response.json',base); return base

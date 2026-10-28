@@ -13,6 +13,12 @@ class MLRuntime:
         self.StateEstimatorG=StateEstimatorG; self.TransitionUNet=TransitionUNet
         self.mode=mode; self.device=torch.device('cuda' if device_name=='auto' and torch.cuda.is_available() else ('cpu' if device_name=='auto' else device_name))
         self.se_run=Path(model_cfg['state_estimator_run']); self.tr_run=Path(model_cfg['transition_run'])
+        perf=model_cfg.get('performance') or {}
+        self.estimator_amp=bool(perf.get('estimator_amp',False))
+        self.transition_amp=bool(perf.get('transition_amp',False))
+        self.candidate_chunk_size=int(perf.get('candidate_chunk_size',9))
+        if self.candidate_chunk_size < 1:
+            raise ValueError('candidate_chunk_size must be >= 1')
         self.state_model,self.state_cfg,self.state_ckpt=self._load_state()
         self.transition_model,self.transition_cfg,self.transition_ckpt=self._load_transition()
         expected={'metadata_only':'metadata_only','action_history_only':'action_history_only','shock_metadata':'shock_metadata','shock_action_history':'shock_action_history'}[mode]
@@ -60,19 +66,39 @@ class MLRuntime:
             if d['shock_normalization']['to_unit_interval']: x=(x-clip0)/(clip1-clip0)
             x=F.interpolate(x,size=(int(d['image_size']),int(d['image_size'])),mode='area')
             shock_t=x.unsqueeze(0).to(self.device)
-        with torch.no_grad(): out=self.state_model(shock_t,meta_t,h_t,hl,return_latents=True); prob=torch.sigmoid(out['logits']).float()
-        return prob, out.get('z_shock')
+        use_amp=self.estimator_amp and self.device.type=='cuda'
+        with torch.inference_mode():
+            with torch.autocast(device_type=self.device.type,enabled=use_amp):
+                out=self.state_model(shock_t,meta_t,h_t,hl,return_latents=True)
+                prob=torch.sigmoid(out['logits']).float()
+        z=out.get('z_shock')
+        if z is not None: z=z.float()
+        return prob,z
 
     def predict_candidates(self,current_binary:torch.Tensor,z_shock,actions):
         norm=self.transition_cfg['data']['metadata_normalization']; next_pulse=None
         # candidate pulse number is supplied by caller in each action tuple's fifth field
         metas=np.asarray([[a.energy_uJ,a.action_y_um,a.action_z_um,a.next_pulse] for a in actions],dtype=np.float32)
         metas=np.stack([self._norm_meta(x,norm) for x in metas]); act=torch.from_numpy(metas).to(self.device)
-        current=current_binary.to(self.device); enc=self.transition_model.encode_state(current)
-        probs=[]; chunk=9
-        with torch.no_grad():
-            for start in range(0,len(actions),chunk):
-                n=min(chunk,len(actions)-start); a=act[start:start+n]; z=None
-                if self.transition_model.variant=='B': z=z_shock.expand(n,-1)
-                out=self.transition_model.decode_from_encoded(current,enc,a,z_shock=z,repeats=n); probs.append(out['next_pred'].float().cpu())
+        current=current_binary.to(self.device)
+        probs=[]; chunk=self.candidate_chunk_size
+        use_amp=self.transition_amp and self.device.type=='cuda'
+        with torch.inference_mode():
+            with torch.autocast(device_type=self.device.type,enabled=use_amp):
+                enc=self.transition_model.encode_state(current)
+                for start in range(0,len(actions),chunk):
+                    n=min(chunk,len(actions)-start); a=act[start:start+n]; z=None
+                    if self.transition_model.variant=='B':
+                        if z_shock is None: raise ValueError('Transition B requires z_shock')
+                        z=z_shock.expand(n,-1)
+                    out=self.transition_model.decode_from_encoded(current,enc,a,z_shock=z,repeats=n)
+                    probs.append(out['next_pred'].float().cpu())
         return torch.cat(probs,dim=0).numpy()[:,0]
+
+    def performance_settings(self):
+        return {
+            'estimator_amp':bool(self.estimator_amp),
+            'transition_amp':bool(self.transition_amp),
+            'candidate_chunk_size':int(self.candidate_chunk_size),
+            'device':str(self.device),
+        }

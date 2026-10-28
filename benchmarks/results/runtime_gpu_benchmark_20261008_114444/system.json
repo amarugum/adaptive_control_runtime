@@ -1,0 +1,17 @@
+{
+  "runtime_config": "C:\\Users\\3-019A_ShockExp7\\Documents\\azuma\\1_prog\\adaptive_control_runtime\\adaptive_runtime_config.yaml",
+  "ml_repo": "..\\laser_processing_ml",
+  "torch_version": "2.4.1+cu118",
+  "cuda_version": "11.8",
+  "gpu_name": "NVIDIA GeForce RTX 2080 SUPER",
+  "benchmark_version": "v2",
+  "gpu_total_memory_gb": 7.99969482421875,
+  "initial_memory": {
+    "cuda_total_gb": 7.99969482421875,
+    "cuda_free_gb": 6.9365234375,
+    "cuda_used_visible_gb": 1.06317138671875,
+    "torch_allocated_gb": 0.0,
+    "torch_reserved_gb": 0.0
+  },
+  "important_note": "PyTorch reports CUDA/dedicated-memory usage, not Windows WDDM Shared GPU Memory. Confirm Shared GPU Memory manually in Task Manager for the recommended runtime setting."
+}

@@ -1,0 +1,67 @@
+runtime_performance_recommendation:
+  action_history_only:
+    estimator_inference_amp: false
+    transition_inference_amp: true
+    candidate_chunk_size: 12
+    estimator_median_ms: 2.739008069038391
+    transition_27_action_median_ms: 65.4725112915039
+    estimated_ml_pipeline_median_ms: 68.2115193605423
+    estimator_amp_consistency:
+      reference: AMP=False (FP32)
+      comparison: AMP=True vs AMP=False
+      max_abs_diff: 0.01882156729698181
+      mean_abs_diff: 1.4378124433278572e-06
+      rmse_diff: 0.00010216277587460354
+      binary_disagreement_fraction: 0.0
+    transition_recommendation_detail:
+      transition_inference_amp: true
+      candidate_chunk_size: 12
+      median_ms: 65.4725112915039
+      p95_ms: 66.10771446228027
+      peak_reserved_gb: 1.669921875
+      fastest_raw_amp: true
+      fastest_raw_chunk_size: 12
+      fastest_raw_median_ms: 65.4725112915039
+      selection_rule: fastest safe setting; prefer FP32 when its median latency is
+        within 3% of the raw fastest setting
+      amp_vs_fp32_binary_disagreement_fraction: 6.216543624759652e-06
+      amp_vs_fp32_max_abs_diff: 0.02080833911895752
+    memory_margin_gb: 0.75
+    estimator_run: F:\260910_ml_outputs\20260928_001855_g1_matched_action_history_only
+    transition_run: F:\260910_ml_outputs\20260928_135723_transition_a_no_zshock
+    manual_check_required: Confirm Windows Task Manager Shared GPU Memory stays near
+      zero while repeatedly using the recommended setting. Also verify final action
+      selection equivalence before enabling AMP in the live controller.
+  shock_metadata:
+    estimator_inference_amp: false
+    transition_inference_amp: true
+    candidate_chunk_size: 27
+    estimator_median_ms: 8.438976287841797
+    transition_27_action_median_ms: 66.74343872070312
+    estimated_ml_pipeline_median_ms: 75.18241500854492
+    estimator_amp_consistency:
+      reference: AMP=False (FP32)
+      comparison: AMP=True vs AMP=False
+      max_abs_diff: 0.021014869213104248
+      mean_abs_diff: 2.5071640266105533e-06
+      rmse_diff: 0.00016249211330432445
+      binary_disagreement_fraction: 0.0
+    transition_recommendation_detail:
+      transition_inference_amp: true
+      candidate_chunk_size: 27
+      median_ms: 66.74343872070312
+      p95_ms: 68.5590259552002
+      peak_reserved_gb: 3.904296875
+      fastest_raw_amp: true
+      fastest_raw_chunk_size: 27
+      fastest_raw_median_ms: 66.74343872070312
+      selection_rule: fastest safe setting; prefer FP32 when its median latency is
+        within 3% of the raw fastest setting
+      amp_vs_fp32_binary_disagreement_fraction: 2.260561359435087e-06
+      amp_vs_fp32_max_abs_diff: 0.03872478008270264
+    memory_margin_gb: 0.75
+    estimator_run: F:\260910_ml_outputs\20260927_234100_g5_shock_metadata
+    transition_run: F:\260910_ml_outputs\20260928_152536_transition_b_from_g5_shock_metadata
+    manual_check_required: Confirm Windows Task Manager Shared GPU Memory stays near
+      zero while repeatedly using the recommended setting. Also verify final action
+      selection equivalence before enabling AMP in the live controller.
